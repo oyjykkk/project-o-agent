@@ -1,0 +1,20 @@
+{
+  "name": "super-agent-04b-builtin-tools",
+  "version": "0.4.1",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "ai": "5.0.98",
+    "@ai-sdk/openai": "2.0.44",
+    "zod": "3.25.76",
+    "dotenv": "16.5.0",
+    "fast-glob": "3.3.3"
+  },
+  "devDependencies": {
+    "tsx": "4.19.4",
+    "@types/node": "22.15.3",
+    "typescript": "5.8.3"
+  }
+}
