@@ -1,20 +1,12 @@
 /**
- * Mock Model v0.4 — Tool System
- *
- * 在 v0.3 基础上新增：
- * - 文件操作工具支持（read_file, list_directory）
- * - "测试并发"：同时调用 3 个工具，验证并发执行
- * - "测试截断"：读取大文件，验证结果截断
- * - 多工具调用（parallel tool calls）
+ * 本地 Mock 模型：无 API Key 时提供基础工具调用能力
  */
-
-let retryTestCount = 0;
 
 const TEXT_RESPONSES: Record<string, string> = {
   default:
-    '你好！我是 Super Agent v0.4.1，现在有 9 个内置工具了。试试"测试编辑"、"测试搜索"、"测试glob"、"测试bash"看看新功能。',
+    '你好！我是 Super Agent，支持天气查询、计算、文件操作、搜索和命令执行等工具。',
   greeting:
-    '你好！我是 Super Agent v0.4.1，支持文件编辑、搜索、命令执行 :)',
+    '你好！我是 Super Agent，有什么可以帮你的？',
 };
 
 interface ToolCallIntent {
@@ -42,45 +34,10 @@ function hasToolResults(prompt: any[]): boolean {
   return false;
 }
 
-function detectParallelIntent(text: string): ToolCallIntent[] | null {
-  if (text.includes('测试并发') || text.includes('test parallel')) {
-    return [
-      { toolName: 'get_weather', args: { city: '北京' } },
-      { toolName: 'get_weather', args: { city: '上海' } },
-      { toolName: 'list_directory', args: { path: '.' } },
-    ];
-  }
-  return null;
-}
-
 function detectToolIntent(prompt: any[]): ToolCallIntent | null {
   const text = extractUserText(prompt);
 
-  if (text.includes('测试死循环')) {
-    return { toolName: 'get_weather', args: { city: '北京' } };
-  }
-
   if (hasToolResults(prompt)) return null;
-
-  if (text.includes('测试截断') || text.includes('test truncation')) {
-    return { toolName: 'read_file', args: { path: 'sample-data.txt' } };
-  }
-
-  if (text.includes('测试编辑') || text.includes('test edit')) {
-    return { toolName: 'edit_file', args: { path: 'sample-data.txt', old_string: '一、工具注册机制', new_string: '一、工具注册机制（已更新）' } };
-  }
-
-  if (text.includes('测试搜索') || text.includes('test grep')) {
-    return { toolName: 'grep', args: { pattern: 'export', path: 'src' } };
-  }
-
-  if (text.includes('测试glob') || text.includes('test glob')) {
-    return { toolName: 'glob', args: { pattern: '**/*.ts' } };
-  }
-
-  if (text.includes('测试bash') || text.includes('test bash')) {
-    return { toolName: 'bash', args: { command: 'echo "Hello from bash!" && date' } };
-  }
 
   if (text.includes('目录') || text.includes('文件列表') || text.includes('ls')) {
     return { toolName: 'list_directory', args: { path: '.' } };
@@ -199,44 +156,13 @@ export function createMockModel() {
   return {
     specificationVersion: 'v2' as const,
     provider: 'mock',
-    modelId: 'mock-model-v0.4.1',
+    modelId: 'local-mock',
 
     get supportedUrls() {
       return Promise.resolve({});
     },
 
     async doGenerate({ prompt }: any) {
-      const text = extractUserText(prompt);
-
-      if (text.includes('测试重试') || text.includes('test retry')) {
-        retryTestCount++;
-        if (retryTestCount <= 2) {
-          throw new Error('429 Too Many Requests - Rate limit exceeded');
-        }
-        retryTestCount = 0;
-        return {
-          content: [{ type: 'text' as const, text: '重试成功！' }],
-          finishReason: { unified: 'stop' as const, raw: undefined },
-          usage: USAGE,
-          warnings: [],
-        };
-      }
-
-      const parallelIntents = detectParallelIntent(text);
-      if (parallelIntents && !hasToolResults(prompt)) {
-        return {
-          content: parallelIntents.map(intent => ({
-            type: 'tool-call' as const,
-            toolCallId: `call-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            toolName: intent.toolName,
-            input: intent.args,
-          })),
-          finishReason: { unified: 'tool-calls' as const, raw: undefined },
-          usage: USAGE,
-          warnings: [],
-        };
-      }
-
       const intent = detectToolIntent(prompt);
       if (intent) {
         return {
@@ -261,30 +187,6 @@ export function createMockModel() {
     },
 
     async doStream({ prompt }: any) {
-      const text = extractUserText(prompt);
-
-      if (text.includes('测试重试') || text.includes('test retry')) {
-        retryTestCount++;
-        if (retryTestCount <= 2) {
-          throw new Error('429 Too Many Requests - Rate limit exceeded');
-        }
-        retryTestCount = 0;
-        const reply = '重试成功！';
-        const id = 'text-1';
-        const chunks: any[] = [
-          { type: 'text-start', id },
-          ...reply.split('').map((char: string) => ({ type: 'text-delta', id, delta: char })),
-          { type: 'text-end', id },
-          { type: 'finish', finishReason: { unified: 'stop', raw: undefined }, usage: USAGE },
-        ];
-        return { stream: createDelayedStream(chunks, 30) };
-      }
-
-      const parallelIntents = detectParallelIntent(text);
-      if (parallelIntents && !hasToolResults(prompt)) {
-        return { stream: createDelayedStream(makeToolCallChunks(parallelIntents), 15) };
-      }
-
       const intent = detectToolIntent(prompt);
       if (intent) {
         return { stream: createDelayedStream(makeToolCallChunks([intent]), 20) };

@@ -18,9 +18,9 @@ export type DetectionResult =
 // --- 配置 ---
 
 const HISTORY_SIZE = 30;       // 滑动窗口大小
-const WARNING_THRESHOLD = 5;   // 警告阈值（演示用，生产环境通常是 10）
-const CRITICAL_THRESHOLD = 8;  // 严重阈值（演示用，生产环境通常是 20）
-const BREAKER_THRESHOLD = 10;  // 熔断阈值（演示用，生产环境通常是 30）
+const WARNING_THRESHOLD = 5;
+const CRITICAL_THRESHOLD = 8;
+const BREAKER_THRESHOLD = 10;
 
 // --- 指纹计算 ---
 
